@@ -6,7 +6,7 @@ Modify Watch uses the script `mow` to actively be used in a Unix-shell; dependin
 > To be able to run shell script files on Windows, download and use [Git Bash](https://git-scm.com/downloads), or an alternative such as [Cygwin](https://cygwin.com/install.html).
 
 ### Step 1:
-First download the ZIP containing the latest Modify Watch distribution and unzip the file in your desired directory.
+First [download](https://github.com/Dyrektrypt/modify-watch/releases/tag/1.0.0) the ZIP containing the latest Modify Watch distribution and unzip the file in your desired directory.
 
 ### Step 2:
 Open the extracted directory in terminal and run the command:
