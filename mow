@@ -1,0 +1,63 @@
+#!/bin/sh
+  
+initialise() {
+    while [ "${#}" -ne "0" ]; do
+
+        while getopts o:es flag; do
+            case "${flag}" in
+                o) ;;
+                e) ;;
+                s) ;;
+                *) exit;;
+            esac
+        done
+
+        shift "$((OPTIND-1))"
+        REQUIRED="${REQUIRED+${REQUIRED} }${1+\"${1}\"}"
+        OPTIND="2"
+    done
+
+    case "${REQUIRED}" in
+        *\"[[:space:]]\"*)
+            printf "mow: too many required arguments: %s\n" "${REQUIRED}"
+            exit
+            ;;
+    esac
+
+    if [ -z "${REQUIRED}" ]; then
+        printf "mow: missing required argument: \$filepath\n"
+        exit
+    fi
+}
+
+
+#Initialise program
+initialise "${@}"
+
+filepath="$(printf "%s" "${REQUIRED}" | sed "s/\"[[:space:]]*//g")"
+
+if [ ! -f "${filepath}" ]; then
+    printf "mow: unknown file: %s\n" "${filepath}"
+    exit
+fi
+
+#Initialise event cycle
+printf "Watching file: %s\n\n" "${filepath}"
+prev_modification=$(stat -c %y "${filepath}")
+
+while :; do
+    sleep 0.2s
+
+    if [ ! -f "${filepath}" ]; then
+        printf "\nmow: file deleted: %s\n" "${filepath}"
+        exit
+    fi
+
+    modification=$(stat -c %y "${filepath}")
+
+    if [ "$modification" != "$prev_modification" ]; then
+        printf "file %s modified at %s\n" "${filepath}" "${modification}"
+    fi
+
+    prev_modification="$modification"
+done
