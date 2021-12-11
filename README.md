@@ -27,7 +27,7 @@ export PATH=$PATH:path/to/mow/directory
 Now just run the command `mow [args]` whenever you want to use Modify Watch.
 
 ## Usage
-Modify Watch requires the argument of SOURCE in which is the path of the file to be watched.
+Modify Watch has the mandatory argument of SOURCE in which is the path of the file to be watched.
 
 Modify Watch has the usage of the following:
 ```
