@@ -1,13 +1,33 @@
 #!/bin/sh
+
+MESSAGE="Usage: mow [OPTION]... SOURCE
+
+Output date and time of SOURCE when modified.
+
+Options:
+  -e                           attach a shell script to be executed
+  -h                           bring up this help message again
+  -o                           attach a directory in which SOURCE will be
+                               copied to
+  -s                           make Modify Watch silent, giving no output
+                               unless arguments are invalid
+
+By default, Modify Watch will terminate as soon as passed files or
+directories are deleted, being unable to maintain normal program flow.
+
+Modify Watch was implemented as a more powerful alternative to
+inotifywatch in which lacked essential functionality.
+"
   
 initialise() {
     while [ "${#}" -ne "0" ]; do
 
-        while getopts o:es flag; do
+        while getopts o:e:sh flag; do
             case "${flag}" in
-                o) ;;
-                e) ;;
-                s) ;;
+                o) OUTPUT="${OPTARG}";;
+                e) EVENT="${OPTARG}";;
+                s) SILENT="true";;
+                h) HELP="true";;
                 *) exit;;
             esac
         done
@@ -17,6 +37,11 @@ initialise() {
         OPTIND="2"
     done
 
+    if [ -n "${HELP}" ]; then
+        printf "%s" "${MESSAGE}"
+        exit
+    fi
+
     case "${REQUIRED}" in
         *\"[[:space:]]\"*)
             printf "mow: too many required arguments: %s\n" "${REQUIRED}"
@@ -25,11 +50,10 @@ initialise() {
     esac
 
     if [ -z "${REQUIRED}" ]; then
-        printf "mow: missing required argument: \$filepath\n"
+        printf "mow: missing required argument: SOURCE\n"
         exit
     fi
 }
-
 
 #Initialise program
 initialise "${@}"
@@ -41,22 +65,70 @@ if [ ! -f "${filepath}" ]; then
     exit
 fi
 
+if [ -n "${OUTPUT}" ] && [ ! -d "${OUTPUT}" ]; then
+    printf "mow: unknown directory: %s\n" "${OUTPUT}"
+    exit
+fi
+
+if [ -n "${EVENT}" ]; then
+
+    #should be inverse
+    case "$(file "${EVENT}")" in
+        *"POSIX shell script"*)
+            ;;
+        *)
+            printf "mow: unkown shell script: %s\n" "${EVENT}"
+            exit
+            ;;
+    esac
+fi
+
+if [ ! "${SILENT}" = "true" ]; then
+    watch="Watching file: %s\n\n"
+    modify="file %s modified at %s\n"
+    outputting="copying file %s to %s directory\n"
+    executing="executing shell script %s\n"
+    delete_file="\nmow: file deleted: %s\n"
+    delete_event="\nmow: shell script deleted: %s\n"
+    delete_directory="\nmow: directory deleted: %s\n"
+fi
+
 #Initialise event cycle
-printf "Watching file: %s\n\n" "${filepath}"
+printf "${watch}" "${filepath}"
 prev_modification=$(stat -c %y "${filepath}")
 
 while :; do
     sleep 0.2s
 
     if [ ! -f "${filepath}" ]; then
-        printf "\nmow: file deleted: %s\n" "${filepath}"
+        printf "${delete_file}" "${filepath}"
+        exit
+    fi
+
+    if [ -n "${OUTPUT}" ] && [ ! -d "${OUTPUT}" ]; then
+        printf "${delete_directory}" "${OUTPUT}"
+        exit
+    fi
+
+    if [ -n "${EVENT}" ] && [ ! -f "${EVENT}" ]; then
+        printf "${delete_event}" "${EVENT}"
         exit
     fi
 
     modification=$(stat -c %y "${filepath}")
 
     if [ "$modification" != "$prev_modification" ]; then
-        printf "file %s modified at %s\n" "${filepath}" "${modification}"
+        printf "${modify}" "${filepath}" "${modification}"
+
+        if [ -n "${OUTPUT}" ]; then
+            printf "${outputting}" "${filepath}" "${OUTPUT}"        
+            cp -p "${filepath}" "${OUTPUT}"
+        fi
+
+        if [ -n "${EVENT}" ]; then
+            printf "${executing}" "${EVENT}"
+            bash "${EVENT}"
+        fi
     fi
 
     prev_modification="$modification"
