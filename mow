@@ -18,6 +18,13 @@ directories are deleted, being unable to maintain normal program flow.
 Modify Watch was implemented as a more powerful alternative to
 inotifywatch in which lacked essential functionality.\n"
 
+check_argument() {
+    if [ -z "${2}" ]; then
+        printf "No arg for --%s option\n" "${1}"
+        exit
+    fi
+}
+
 initialise() {
     while [ "${#}" -ne "0" ]; do
 
@@ -27,11 +34,13 @@ initialise() {
                     case "${OPTARG}" in
                         output)
                             shift "$((OPTIND-1))"
+                            check_argument "${OPTARG}" "${1}"
                             OUTPUT="${1}"
                             OPTIND="2"
                             ;;
                         event)
                             shift "$((OPTIND-1))"
+                            check_argument "${OPTARG}" "${1}"
                             EVENT="${1}"
                             OPTIND="2"
                             ;;
@@ -40,6 +49,10 @@ initialise() {
                             ;;
                         help) 
                             HELP="true"
+                            ;;
+                        *)
+                            printf "Illegal option --%s\n" "${OPTARG}"
+                            exit
                             ;;
                     esac
                     ;;
