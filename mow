@@ -4,52 +4,83 @@ MESSAGE="Usage: mow [OPTION]... SOURCE
 
 Output date and time of SOURCE when modified.
 
-Options:
-  -e                           attach a shell script to be executed
-  -h                           bring up this help message again
-  -o                           attach a directory in which SOURCE will be
+Mandatory arguments for long options are mandatory for short options too:
+  -e, --event                  attach a shell script to be executed
+  -h, --help                   bring up this help message again
+  -o, --output                 attach a directory in which SOURCE will be
                                copied to
-  -s                           make Modify Watch silent, giving no output
+  -s, --silent                 make Modify Watch silent, giving no output
                                unless arguments are invalid
 
 By default, Modify Watch will terminate as soon as passed files or
 directories are deleted, being unable to maintain normal program flow.
 
 Modify Watch was implemented as a more powerful alternative to
-inotifywatch in which lacked essential functionality.
-"
-  
+inotifywatch in which lacked essential functionality.\n"
+
 initialise() {
     while [ "${#}" -ne "0" ]; do
 
-        while getopts o:e:sh flag; do
+        while getopts -:o:e:sh flag; do
             case "${flag}" in
-                o) OUTPUT="${OPTARG}";;
-                e) EVENT="${OPTARG}";;
-                s) SILENT="true";;
-                h) HELP="true";;
-                *) exit;;
+                -)
+                    case "${OPTARG}" in
+                        output)
+                            shift "$((OPTIND-1))"
+                            OUTPUT="${1}"
+                            OPTIND="2"
+                            ;;
+                        event)
+                            shift "$((OPTIND-1))"
+                            EVENT="${1}"
+                            OPTIND="2"
+                            ;;
+                        silent)
+                            SILENT="true"
+                            ;;
+                        help) 
+                            HELP="true"
+                            ;;
+                    esac
+                    ;;
+                o)
+                    OUTPUT="${OPTARG}"
+                    ;;
+                e)
+                    EVENT="${OPTARG}"
+                    ;;
+                s)
+                    SILENT="true"
+                    ;;
+                h)
+                    HELP="true"
+                    ;;
+                *)
+                    exit
+                    ;;
             esac
         done
 
         shift "$((OPTIND-1))"
-        REQUIRED="${REQUIRED+${REQUIRED} }${1+\"${1}\"}"
+        FILEPATH="${FILEPATH+${FILEPATH} }${1+${1},}"
         OPTIND="2"
     done
 
+    FILEPATH="${FILEPATH%%,[[:space:]]}"
+
     if [ -n "${HELP}" ]; then
-        printf "%s" "${MESSAGE}"
+        printf "${MESSAGE}"
         exit
     fi
 
-    case "${REQUIRED}" in
-        *\"[[:space:]]\"*)
-            printf "mow: too many mandatory arguments: %s\n" "${REQUIRED}"
+    case "${FILEPATH}" in
+        *,[[:space:]]*)
+            printf "mow: too many mandatory arguments: %s\n" "${FILEPATH}"
             exit
             ;;
     esac
 
-    if [ -z "${REQUIRED}" ]; then
+    if [ -z "${FILEPATH}" ]; then
         printf "mow: missing mandatory argument: SOURCE\n"
         exit
     fi
@@ -58,10 +89,8 @@ initialise() {
 #Initialise program
 initialise "${@}"
 
-filepath="$(printf "%s" "${REQUIRED}" | sed "s/\"[[:space:]]*//g")"
-
-if [ ! -f "${filepath}" ]; then
-    printf "mow: unknown file: %s\n" "${filepath}"
+if [ ! -f "${FILEPATH}" ]; then
+    printf "mow: unknown file: %s\n" "${FILEPATH}"
     exit
 fi
 
@@ -83,24 +112,25 @@ if [ -n "${EVENT}" ]; then
 fi
 
 if [ ! "${SILENT}" = "true" ]; then
+    newline="\n"
     watch="Watching file: %s\n\n"
     modify="file %s modified at %s\n"
     outputting="copying file %s to %s directory\n"
-    executing="executing shell script %s\n"
+    executing="executing shell script %s:\n\n"
     delete_file="\nmow: file deleted: %s\n"
     delete_event="\nmow: shell script deleted: %s\n"
     delete_directory="\nmow: directory deleted: %s\n"
 fi
 
 #Initialise event cycle
-printf "${watch}" "${filepath}"
-prev_modification=$(stat -c %y "${filepath}")
+printf "${watch}" "${FILEPATH}"
+prev_modification=$(stat -c %y "${FILEPATH}")
 
 while :; do
     sleep 0.2s
 
-    if [ ! -f "${filepath}" ]; then
-        printf "${delete_file}" "${filepath}"
+    if [ ! -f "${FILEPATH}" ]; then
+        printf "${delete_file}" "${FILEPATH}"
         exit
     fi
 
@@ -114,20 +144,22 @@ while :; do
         exit
     fi
 
-    modification=$(stat -c %y "${filepath}")
+    modification=$(stat -c %y "${FILEPATH}")
 
     if [ "$modification" != "$prev_modification" ]; then
-        printf "${modify}" "${filepath}" "${modification}"
+        printf "${modify}" "${FILEPATH}" "${modification}"
 
         if [ -n "${OUTPUT}" ]; then
-            printf "${outputting}" "${filepath}" "${OUTPUT}"        
-            cp -p "${filepath}" "${OUTPUT}"
+            printf "${outputting}" "${FILEPATH}" "${OUTPUT}"        
+            cp -p "${FILEPATH}" "${OUTPUT}"
         fi
 
         if [ -n "${EVENT}" ]; then
             printf "${executing}" "${EVENT}"
             bash "${EVENT}"
         fi
+
+        printf "${newline}"
     fi
 
     prev_modification="$modification"

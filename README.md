@@ -35,12 +35,12 @@ Usage: mow [OPTION]... SOURCE
 
 Output date and time of SOURCE when modified.
 
-Options:
-  -e                           attach a shell script to be executed
-  -h                           bring up this help message again
-  -o                           attach a directory in which SOURCE will be
+Mandatory arguments for long options are mandatory for short options too:
+  -e, --event                  attach a shell script to be executed
+  -h, --help                   bring up this help message again
+  -o, --output                 attach a directory in which SOURCE will be
                                copied to
-  -s                           make Modify Watch silent, giving no output
+  -s, --silent                 make Modify Watch silent, giving no output
                                unless arguments are invalid
 
 By default, Modify Watch will terminate as soon as passed files or
